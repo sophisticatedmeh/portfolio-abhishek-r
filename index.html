@@ -108,9 +108,29 @@ kbd{display:inline-block;min-width:24px;padding:2px 6px;border:2px solid var(--i
 .sh-sign{position:absolute;left:214px;top:-4px;width:56px;height:56px;border-radius:50%;background:var(--red);border:3px solid var(--paper);color:#fff;display:grid;place-content:center;text-align:center;line-height:1.05;box-shadow:6px 8px 0 rgba(0,0,0,.25)}
 .sh-sign b{font:900 9px/1 var(--sign);letter-spacing:.06em}
 .shelter.seen .sh-sign::after{content:"✓";position:absolute;right:-6px;top:-6px;width:20px;height:20px;border-radius:50%;background:var(--good);color:#fff;border:2px solid var(--paper);font:900 11px/16px var(--sign)}
-.crowd{top:456px;width:200px;height:20px;z-index:3}
-.ppl{position:absolute;top:0;width:13px;height:13px;border-radius:50%;background:#2a1d14;box-shadow:0 0 0 4px var(--c);transition:transform 1s ease,opacity 1s ease}
-.crowd.gone .ppl{opacity:0;transform:translate(var(--dx),40px) scale(.6)}
+.crowd{top:456px;width:200px;height:20px;z-index:1}   /* same layer as the pedestrians: the shelter (z 2) draws over them */
+/* passengers: the same top-down figure as the pedestrians, waiting at the shelter facing the road */
+.ppl{position:absolute;top:0;width:30px;height:30px;margin:-8px 0 0 -8px;transition:transform 1s ease,opacity 1s ease}
+.ppl svg{display:block;filter:drop-shadow(2px 3px 1px rgba(0,0,0,.28));transform:rotate(90deg)}
+.crowd.gone .ppl{opacity:0;transform:translate(var(--dx),40px) scale(.75)}
+/* walking (boarding / getting off): feet and arms swing like the pedestrians' */
+.crowd.gone .ppl .f1,.crowd.gone .ppl .a2{animation:stride .55s ease-in-out infinite alternate}
+.crowd.gone .ppl .f2,.crowd.gone .ppl .a1{animation:stride .55s ease-in-out infinite alternate-reverse}
+/* last stop: nobody waiting; when the bus pulls in, passengers climb down one by one, step up onto
+   the footpath and turn to walk — then the script swaps each one for a real pedestrian (.walked hides the original) */
+.crowd.alight .ppl,.crowd.alight.gone .ppl{transition:none;opacity:0;transform:translate(var(--dx),40px) scale(.75)}
+.crowd.alight.gone .ppl{animation:alight 2.6s ease-in-out var(--d) both}
+.crowd.alight.gone .ppl svg{animation:alightFace 2.6s ease-in-out var(--d) both}
+.crowd.alight.gone .ppl.walked{visibility:hidden}
+@keyframes alight{
+  0%{opacity:0;transform:translate(var(--dx),40px) scale(.75)}
+  14%{opacity:1;transform:translate(var(--dx),22px) scale(.92)}
+  50%{opacity:1;transform:translate(0,0) scale(1)}
+  88%,100%{opacity:1;transform:translate(0,var(--ly)) scale(1)}
+}
+/* face the footpath while getting off, then turn the way they're about to walk */
+@keyframes alightFace{0%,86%{transform:rotate(-90deg)}100%{transform:rotate(var(--face))}}
+@media (prefers-reduced-motion:reduce){.crowd.alight.gone .ppl,.crowd.alight.gone .ppl svg{animation:none}}
 
 /* hoardings + wall posters (across the road) */
 .hoard,.poster{top:768px;width:360px;height:224px;z-index:2}
@@ -316,6 +336,9 @@ body.touch .ctrl .cbtn{padding:10px 12px}
 .pop.beside .pc-b{border:0;padding:0}
 .pop.beside .pc-b ul{margin-top:12px}
 .pop.beside .pop-in{transform-origin:0 30%}
+/* cards that end just above the billboards drop in from above, so not even the entrance dips over them */
+.pop.cover .pop-in,.pop.beside .pop-in{transform-origin:50% 0;animation:popDrop .35s ease-out}
+@keyframes popDrop{from{opacity:0;transform:translateY(-14px)}to{opacity:1;transform:none}}
 .pop.beside .pop-tail{bottom:auto;left:-12px;margin-left:0;transform:rotate(135deg)}
 .pop.beside.to-left .pop-tail{left:auto;right:-12px;transform:rotate(-45deg)}
 .pop.sheet .pop-body{display:block}
@@ -785,19 +808,43 @@ for (let x = 960; x < ROAD_END - 200; x += 210 + rnd() * 210) {
 }
 for (let x = 40; x < WORLD_LEN; x += 260 + rnd() * 260) H.push(tree(x, -60 + rnd() * 40, 70 + rnd() * 50, rnd() < .2));
 
+// people: one top-down figure used for the pedestrians on the footpaths and the passengers at the stops
+const SHIRT = ['#E8553B', '#3A7BD5', '#F2C230', '#7A4FB5', '#2F9E6B', '#E07AA0', '#F7EFDC', '#1f8a8a', '#C8302A', '#FF9F1C', '#5b6b7a'];
+const HAIR = ['#1d1410', '#2a1d14', '#3b2a1e', '#4a4038', '#bdb5aa'];
+const UMB = ['#1b1b1b', '#2E5EAA', '#B3261E', '#2F6B3A', '#6B3FA0'];
+// footpath walking lanes (y = centre line): two on the shelter side, two on the billboard side
+const PED_LANES = [{ y: 404, dir: 1 }, { y: 428, dir: -1 }, { y: 724, dir: -1 }, { y: 746, dir: 1 }];
+function pedSVG(shirt, hair, umb) {
+  let u = '';
+  if (umb) {
+    u = `<circle cx="1" cy="0" r="13" fill="${umb}"/><g stroke="rgba(255,255,255,.28)" stroke-width="1"><line x1="1" y1="-13" x2="1" y2="13"/><line x1="-12" y1="0" x2="14" y2="0"/><line x1="-8" y1="-9" x2="10" y2="9"/><line x1="-8" y1="9" x2="10" y2="-9"/></g><circle cx="1" cy="0" r="1.7" fill="#d9d2c3"/>`;
+  }
+  return `<svg viewBox="-15 -15 30 30" width="30" height="30" aria-hidden="true"><g class="feet"><ellipse class="f1" cx="0" cy="-4" rx="4" ry="2.4" fill="#33281f"/><ellipse class="f2" cx="0" cy="4" rx="4" ry="2.4" fill="#33281f"/></g><g><circle class="a1" cx="0" cy="-9.5" r="2.6" fill="#a8714b"/><circle class="a2" cx="0" cy="9.5" r="2.6" fill="#a8714b"/></g><ellipse cx="0" cy="0" rx="5.5" ry="9" fill="${shirt}"/><circle cx="1.2" cy="0" r="4.6" fill="${hair}"/>${u}</svg>`;
+}
+
 // stops, road furniture, work across the road
 const ranges = [];
 const hoard = (x, i, k, w) => `<button class="hoard" style="left:${x}px" data-i="${i}" data-k="${k}" tabindex="-1" type="button"><i class="h-shadow"></i><i class="h-leg l"></i><i class="h-leg r"></i><span class="h-board"><img src="${w.img}" alt="" decoding="async"><span class="h-tag">${w.fig}</span><span class="h-zoom">VIEW ⤢</span></span><span class="h-title">${esc(w.title)}</span></button>`;
 const poster = (x, w) => `<div class="poster t-${w.tone}" style="left:${x}px">${w.tone === 'gold' ? CUP : ''}<b>${esc(w.big)}</b><span>${esc(w.title)}</span><small>${esc(w.sub)}</small></div>`;
-const PPLC = ['#E8553B', '#3A7BD5', '#F2C230', '#7A4FB5', '#2F9E6B', '#E07AA0', '#F7EFDC', '#1f8a8a'];
 const HUMPS = [];
 STOPS.forEach((s, i) => {
   H.push(`<div class="bay" style="left:${s.x - DOOR - 14}px"><span>BUS</span></div>`);
   H.push(`<div class="shelter" id="sh${i}" style="left:${s.x - 100}px"><div class="sh-roof"></div><i class="sh-tube"></i><span class="sh-name">${s.terminus ? 'LAST STOP · TERMINUS' : 'STAGE ' + s.stage + ' · ' + esc(s.short)}</span><span class="sh-sign"><b>BUS<br>STOP</b></span></div>`);
   let ppl = '';
   const n = 3 + Math.floor(rnd() * 3);
-  for (let p = 0; p < n; p++) { const px = 20 + p * 34 + rnd() * 12; ppl += `<i class="ppl" style="left:${px.toFixed(0)}px;top:${(rnd() * 6).toFixed(0)}px;--c:${pick(PPLC)};--dx:${(138 - px).toFixed(0)}px;transition-delay:${(p * .12).toFixed(2)}s"></i>`; }
-  H.push(`<div class="crowd" id="crowd${i}" style="left:${s.x - 100}px">${ppl}</div>`);
+  // at the last stop people get OFF: they climb down at the door, step up onto the footpath and
+  // join the pedestrians walking along it (the hand-off happens when their animation ends; see below)
+  const off = !!s.terminus;
+  for (let p = 0; p < n; p++) {
+    // keep the rnd() calls in the same order as before, so the rest of the street stays where it was
+    const px = 20 + p * 34 + rnd() * 12;
+    const t = Math.round(rnd() * 6);
+    const shirt = pick(SHIRT), hair = HAIR[(i * 3 + p) % HAIR.length];   // same figure as the pedestrians
+    const lane = px < 100 ? 1 : 0;   // left half walks off left (footpath lane 1), right half walks right (lane 0)
+    const ly = PED_LANES[lane].y - 463 - t;   // from their spot by the kerb up to that walking lane
+    ppl += `<i class="ppl" data-s="${shirt}" data-h="${hair}" data-lane="${lane}" style="left:${px.toFixed(0)}px;top:${t}px;--dx:${(138 - px).toFixed(0)}px;--ly:${ly}px;--face:${PED_LANES[lane].dir < 0 ? -180 : 0}deg;--d:${(off ? .35 + p * .45 : p * .12).toFixed(2)}s;transition-delay:${(p * .12).toFixed(2)}s">${pedSVG(shirt, hair, '')}</i>`;
+  }
+  H.push(`<div class="crowd${off ? ' alight' : ''}" id="crowd${i}" style="left:${s.x - 100}px">${ppl}</div>`);
   if (i > 0) { const hx = s.x - 640; HUMPS.push(hx); H.push(`<div class="hump" style="left:${hx}px"></div>`); }
   H.push(`<div class="zebra" style="left:${s.x + 110}px"></div>`);
 
@@ -913,18 +960,7 @@ function setNight(on) {
 nightBtn.addEventListener('click', () => setNight(!night));
 const lightsActive = now => night || now - nightFade < 1600;   // keep updating while fading out
 
-/* pedestrians: top-down walkers, a few under umbrellas */
-const PED_LANES = [{ y: 404, dir: 1 }, { y: 428, dir: -1 }, { y: 724, dir: -1 }, { y: 746, dir: 1 }];
-const SHIRT = ['#E8553B', '#3A7BD5', '#F2C230', '#7A4FB5', '#2F9E6B', '#E07AA0', '#F7EFDC', '#1f8a8a', '#C8302A', '#FF9F1C', '#5b6b7a'];
-const HAIR = ['#1d1410', '#2a1d14', '#3b2a1e', '#4a4038', '#bdb5aa'];
-const UMB = ['#1b1b1b', '#2E5EAA', '#B3261E', '#2F6B3A', '#6B3FA0'];
-function pedSVG(shirt, hair, umb) {
-  let u = '';
-  if (umb) {
-    u = `<circle cx="1" cy="0" r="13" fill="${umb}"/><g stroke="rgba(255,255,255,.28)" stroke-width="1"><line x1="1" y1="-13" x2="1" y2="13"/><line x1="-12" y1="0" x2="14" y2="0"/><line x1="-8" y1="-9" x2="10" y2="9"/><line x1="-8" y1="9" x2="10" y2="-9"/></g><circle cx="1" cy="0" r="1.7" fill="#d9d2c3"/>`;
-  }
-  return `<svg viewBox="-15 -15 30 30" width="30" height="30" aria-hidden="true"><g class="feet"><ellipse class="f1" cx="0" cy="-4" rx="4" ry="2.4" fill="#33281f"/><ellipse class="f2" cx="0" cy="4" rx="4" ry="2.4" fill="#33281f"/></g><g><circle class="a1" cx="0" cy="-9.5" r="2.6" fill="#a8714b"/><circle class="a2" cx="0" cy="9.5" r="2.6" fill="#a8714b"/></g><ellipse cx="0" cy="0" rx="5.5" ry="9" fill="${shirt}"/><circle cx="1.2" cy="0" r="4.6" fill="${hair}"/>${u}</svg>`;
-}
+/* pedestrians: top-down walkers, a few under umbrellas (pedSVG, colours and PED_LANES are defined with the stops, above) */
 const peds = [];
 PED_LANES.forEach(lane => {
   let x = rnd() * 200;
@@ -938,6 +974,22 @@ PED_LANES.forEach(lane => {
     peds.push({ el, lane, dir: lane.dir, sp, x, y: lane.y - 15 + (rnd() * 4 - 2) });
     x += 160 + rnd() * 420;
   }
+});
+// Last stop: when a passenger has climbed down and stepped onto the footpath, swap them for a real
+// pedestrian at exactly that spot, so they carry on walking with everyone else.
+world.addEventListener('animationend', e => {
+  const el = e.target;
+  if (e.animationName !== 'alight' || !el.classList || !el.classList.contains('ppl')) return;
+  const lane = PED_LANES[+el.dataset.lane], sp = 34 + Math.random() * 14;
+  const ped = document.createElement('div');
+  ped.className = 'ped' + (lane.dir < 0 ? ' l' : '');
+  ped.style.setProperty('--step', (24 / sp).toFixed(2) + 's');
+  ped.innerHTML = pedSVG(el.dataset.s, el.dataset.h, '');
+  const x = parseFloat(el.parentElement.style.left) + parseFloat(el.style.left) - 8, y = lane.y - 15;
+  ped.style.transform = `translate3d(${x.toFixed(1)}px,${y}px,0)`;
+  $('#traffic').appendChild(ped);
+  peds.push({ el: ped, lane, dir: lane.dir, sp, x, y, extra: true });   // extra: removed (not recycled) once off screen
+  el.classList.add('walked');
 });
 
 /* =========================================================
@@ -1044,7 +1096,12 @@ function step(dt, now) {
   if (cur !== null && (Math.abs(STOPS[cur].tx - bx) > 160 || Math.abs(v) > 40)) depart();
 
   // crowds come back once the bus is well away
-  STOPS.forEach((s, i) => { if (i !== cur && Math.abs(s.x - bx) > 2200) $('#crowd' + i).classList.remove('gone'); });
+  STOPS.forEach((s, i) => {
+    if (i !== cur && Math.abs(s.x - bx) > 2200) {
+      const c = $('#crowd' + i);
+      if (c.classList.contains('gone')) { c.classList.remove('gone'); c.querySelectorAll('.walked').forEach(el => el.classList.remove('walked')); }
+    }
+  });
 }
 
 function bump() {
@@ -1102,15 +1159,21 @@ function render(dt, now) {
   }
 
   // pedestrians on both footpaths, two walking lanes each, no walking through each other
-  for (const p of peds) {
+  for (let k = peds.length - 1; k >= 0; k--) {
+    const p = peds[k];
+    p.ox = p.x;
     p.x += p.dir * p.sp * dt;
-    if (p.x < cam - 300) p.x = right + 60 + rnd() * 700;
-    else if (p.x > right + 300) p.x = cam - 60 - rnd() * 700;
+    const outL = p.x < cam - 300, outR = p.x > right + 300;
+    if ((outL || outR) && p.extra) { p.el.remove(); peds.splice(k, 1); continue; }   // dropped-off passengers leave once out of sight
+    if (outL) p.x = p.ox = right + 60 + rnd() * 700;
+    else if (outR) p.x = p.ox = cam - 60 - rnd() * 700;
   }
+  // keep a gap to the person in front; someone already too close (e.g. a passenger just off the bus)
+  // waits where they are until the gap opens, rather than being shoved back
   for (const lane of PED_LANES) {
     const q = peds.filter(p => p.lane === lane).sort((a, b) => a.x - b.x);
-    if (lane.dir < 0) { for (let k = 1; k < q.length; k++) if (q[k].x < q[k - 1].x + 44) q[k].x = q[k - 1].x + 44; }
-    else { for (let k = q.length - 2; k >= 0; k--) if (q[k].x > q[k + 1].x - 44) q[k].x = q[k + 1].x - 44; }
+    if (lane.dir < 0) { for (let k = 1; k < q.length; k++) if (q[k].x < q[k - 1].x + 44) q[k].x = Math.min(q[k].ox, q[k - 1].x + 44); }
+    else { for (let k = q.length - 2; k >= 0; k--) if (q[k].x > q[k + 1].x - 44) q[k].x = Math.max(q[k].ox, q[k + 1].x - 44); }
   }
   for (const p of peds) p.el.style.transform = `translate3d(${p.x.toFixed(1)}px,${p.y.toFixed(1)}px,0)`;
 
