@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>RIVAL</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cpath d='M28 16 6 4l5 12-5 12z' fill='%23ff3d81'/%3E%3C/svg%3E">
+<meta name="description" content="A one-thumb dodge game where your rival learns how you play.">
+<style>
+  :root { --bg:#07080f; --ink:#eef1ff; --dim:#8a90b8; --cyan:#3df2ff; --pink:#ff3d81; --gold:#ffd23d; --green:#5dff9b; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--ink); overflow:hidden;
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; touch-action:none; user-select:none; -webkit-user-select:none; }
+  canvas { display:block; position:fixed; inset:0; }
+  #ov { position:fixed; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center;
+    padding:1.4em; gap:.7em; background:rgba(7,8,15,.82); backdrop-filter:blur(3px); }
+  #ov.hide { display:none; }
+  h1 { font-size:3.4em; margin:0; letter-spacing:.18em; color:var(--pink); text-shadow:0 0 .4em rgba(255,61,129,.6); }
+  h2 { font-size:1.6em; margin:0; letter-spacing:.08em; }
+  p { margin:0; line-height:1.35; }
+  .dim { color:var(--dim); font-size:.85em; }
+  .card { width:100%; border:1px solid #2a2f55; background:#0e1124; border-radius:.6em; padding:.8em .9em; text-align:left; }
+  .card b { color:var(--gold); }
+  .tag { display:inline-block; padding:.1em .45em; border-radius:.3em; font-size:.8em; margin:.15em .2em 0 0; background:#26113a; color:var(--pink); border:1px solid #4a1d5e; }
+  .tag.off { background:#121530; color:#4a5080; border-color:#20244a; }
+  .big { font-size:2.6em; font-weight:700; }
+  .win { color:var(--green); } .lose { color:var(--pink); } .gold { color:var(--gold); } .cy { color:var(--cyan); }
+  button { font:inherit; font-size:1.15em; font-weight:700; letter-spacing:.12em; color:#07080f; background:var(--cyan); border:0; border-radius:.5em;
+    padding:.75em 1.6em; cursor:pointer; box-shadow:0 0 1em rgba(61,242,255,.35); }
+  button.ghost { background:transparent; color:var(--dim); box-shadow:none; border:1px solid #2a2f55; font-size:.8em; padding:.5em .9em; letter-spacing:.05em; }
+  input { font:inherit; font-size:1em; color:var(--ink); background:#0b0e1f; border:1px solid #3a4070; border-radius:.4em; padding:.5em .7em; width:10em; outline:none; }
+  input:focus { border-color:var(--cyan); }
+  input { user-select:text; -webkit-user-select:text; touch-action:auto; }
+  .row { display:flex; gap:.5em; justify-content:center; flex-wrap:wrap; }
+  .heat { display:grid; grid-template-columns:repeat(3,1.6em); grid-template-rows:repeat(3,2.2em); gap:2px; }
+  .heat div { background:var(--pink); border-radius:2px; }
+  .flex { display:flex; gap:.9em; align-items:center; }
+  .bar { height:.45em; background:#1b1f40; border-radius:1em; overflow:hidden; margin-top:.3em; }
+  .bar i { display:block; height:100%; background:var(--gold); }
+  .pulse { animation:pulse 1.2s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity:.45; } }
+  /* arcade high-score table */
+  .arcade { font-weight:700; letter-spacing:.14em; }
+  .arow { display:grid; grid-template-columns:3.5em 1fr 3.5em; gap:.6em; padding:.18em .3em; text-align:center; font-size:1.05em; }
+  .arow.head { color:var(--ink); font-size:.85em; border-bottom:2px dashed #2a2f55; margin-bottom:.3em; padding-bottom:.4em; }
+  .arow.me { animation:blink .6s steps(1) infinite; background:#1a1d38; border-radius:.2em; }
+  .blink { animation:blink .8s steps(1) infinite; }
+  @keyframes blink { 50% { opacity:.25; } }
+  input.initials { width:4.2em; text-align:center; font-size:1.8em; font-weight:700; letter-spacing:.3em; padding:.2em 0 .2em .3em; text-transform:uppercase; color:var(--gold); border:2px solid var(--gold); background:#05060c; }
+  .pop { animation:pop .5s cubic-bezier(.2,1.6,.4,1) both; }
+  @keyframes pop { from { transform:scale(.6); opacity:0; } }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="ov"></div>
+<script src="game.js"></script>
+</body>
+</html>
